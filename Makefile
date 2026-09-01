@@ -134,8 +134,9 @@ srpm:
 	work=$$(mktemp -d); \
 	trap 'rm -rf -- "$$work"' EXIT; \
 	mkdir -p "$$work/SOURCES" "$$work/SPECS"; \
-	git archive --format=tar.gz --prefix=iris-vaapi-nabu-0.1.0/ \
-		-o "$$work/SOURCES/iris-vaapi-nabu-0.1.0.tar.gz" HEAD; \
+	tar --exclude=.git --exclude=build \
+		--transform='s,^,iris-vaapi-nabu-0.1.0/,' \
+		-czf "$$work/SOURCES/iris-vaapi-nabu-0.1.0.tar.gz" .; \
 	cp iris-vaapi-nabu.spec "$$work/SPECS/"; \
 	rpmbuild -bs --define "_topdir $$work" \
 		"$$work/SPECS/iris-vaapi-nabu.spec"; \
