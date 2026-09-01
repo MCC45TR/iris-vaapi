@@ -29,7 +29,7 @@ TEST_HEVC_REWRITE = $(BUILD)/test_hevc_slice_rewrite
 TEST_VA_STRESS = $(BUILD)/test_va_stress
 TEST_SURFACE_FENCE = $(BUILD)/test_surface_fence
 
-.PHONY: all check clean install uninstall
+.PHONY: all check clean install uninstall srpm
 
 DRIVERDIR ?= $(shell pkg-config --variable=driverdir libva 2>/dev/null)
 DESTDIR ?=
@@ -128,3 +128,15 @@ install: $(DRIVER)
 uninstall:
 	test -n "$(DRIVERDIR)"
 	rm -f "$(DESTDIR)$(DRIVERDIR)/iris_drv_video.so"
+
+srpm:
+	mkdir -p "$(outdir)"
+	work=$$(mktemp -d); \
+	trap 'rm -rf -- "$$work"' EXIT; \
+	mkdir -p "$$work/SOURCES" "$$work/SPECS"; \
+	git archive --format=tar.gz --prefix=iris-vaapi-nabu-0.1.0/ \
+		-o "$$work/SOURCES/iris-vaapi-nabu-0.1.0.tar.gz" HEAD; \
+	cp iris-vaapi-nabu.spec "$$work/SPECS/"; \
+	rpmbuild -bs --define "_topdir $$work" \
+		"$$work/SPECS/iris-vaapi-nabu.spec"; \
+	cp "$$work"/SRPMS/*.src.rpm "$(outdir)/"
