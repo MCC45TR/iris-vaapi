@@ -1,6 +1,6 @@
 Name:           iris-vaapi-nabu
 Version:        0.1.0
-Release:        2.alpha%{?dist}
+Release:        3.alpha%{?dist}
 Summary:        Experimental VA-API driver for Qualcomm SM8150 Iris1
 License:        GPL-2.0-or-later
 URL:            https://github.com/CFM880/iris-vaapi
@@ -31,9 +31,9 @@ Matching kernel work: https://github.com/CFM880/nabu-iris
 %install
 %make_install DRIVERDIR=%{_libdir}/dri
 install -Dm0644 tools/99-iris-dmaheap.rules \
-    %{buildroot}%{_udevrulesdir}/99-iris-dmaheap.rules
+    %{buildroot}%{_prefix}/lib/udev/rules.d/99-iris-dmaheap.rules
 install -Dm0644 tools/99-iris-vaapi.conf \
-    %{buildroot}%{_modprobedir}/99-iris-vaapi.conf
+    %{buildroot}%{_prefix}/lib/modprobe.d/99-iris-vaapi.conf
 
 %check
 make check
@@ -43,9 +43,12 @@ test -s %{buildroot}%{_libdir}/dri/iris_drv_video.so
 %license COPYING
 %doc README.md docs/
 %{_libdir}/dri/iris_drv_video.so
-%{_udevrulesdir}/99-iris-dmaheap.rules
-%{_modprobedir}/99-iris-vaapi.conf
+%{_prefix}/lib/udev/rules.d/99-iris-dmaheap.rules
+%{_prefix}/lib/modprobe.d/99-iris-vaapi.conf
 
 %changelog
+* Tue Sep 01 2026 mcc45tr <mcc45tr@gmail.com> - 0.1.0-3.alpha
+- Use stable /usr/lib paths across supported Fedora releases.
+
 * Tue Sep 01 2026 mcc45tr <mcc45tr@gmail.com> - 0.1.0-2.alpha
 - Track CFM880 revision fe8aa303 and convert the COPR package to SCM auto-build.
