@@ -1203,11 +1203,16 @@ ensure_decoder(struct iris_decode_ctx *ctx)
 	int ret;
 
 	if (ctx->dec_open) {
-		/* After an EOS flush the firmware is done; a client that keeps
-		 * decoding (Chrome flush/reset, looped playback) needs a fresh
-		 * session.  Preserve the picture already collected for this
-		 * vaEndPicture call while clearing the old firmware bookkeeping. */
+		/* A drain does not destroy the V4L2 decoder session.  Resume the
+		 * existing queues after LAST so clients which sync every submitted
+		 * surface do not close and reopen Iris once per frame.  Fall back to
+		 * the proven full restart if the kernel refuses DEC_CMD_START. */
 		if (ctx->eos_sent) {
+			if (v4l2_dec_resume(&ctx->dec) == 0) {
+				ctx->eos_sent = 0;
+				ctx->last_target = 0;
+				return 0;
+			}
 			finish_pending_writes(ctx);
 			forget_vk_capture_buffers(ctx);
 			v4l2_dec_close(&ctx->dec);

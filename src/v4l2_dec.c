@@ -822,6 +822,21 @@ int v4l2_dec_flush(struct v4l2_dec *d)
 	return xioctl(d->fd, VIDIOC_DECODER_CMD, &cmd) < 0 ? -errno : 0;
 }
 
+int v4l2_dec_resume(struct v4l2_dec *d)
+{
+	struct v4l2_decoder_cmd cmd;
+
+	if (!d || d->fd < 0 || !d->streaming || !d->streaming_cap || !d->eos)
+		return -EINVAL;
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.cmd = V4L2_DEC_CMD_START;
+	if (xioctl(d->fd, VIDIOC_DECODER_CMD, &cmd) < 0)
+		return -errno;
+	d->eos = 0;
+	return 0;
+}
+
 int v4l2_dec_stop(struct v4l2_dec *d)
 {
 	enum v4l2_buf_type type;
