@@ -9,6 +9,8 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <glob.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,13 +50,78 @@ static int xioctl(int fd, unsigned long req, void *arg)
 	return r;
 }
 
+static int is_iris_decoder(int fd)
+{
+	struct v4l2_capability cap;
+	unsigned int caps;
+
+	memset(&cap, 0, sizeof(cap));
+	if (xioctl(fd, VIDIOC_QUERYCAP, &cap) < 0)
+		return 0;
+
+	caps = cap.capabilities & V4L2_CAP_DEVICE_CAPS ?
+		cap.device_caps : cap.capabilities;
+	return strcmp((const char *)cap.driver, "iris_driver") == 0 &&
+		strcmp((const char *)cap.card, "Iris Decoder") == 0 &&
+		(caps & V4L2_CAP_VIDEO_M2M_MPLANE) != 0;
+}
+
+static int find_iris_decoder(char *path, size_t path_size)
+{
+	glob_t matches;
+	size_t i;
+	int ret;
+
+	if (!path || path_size == 0)
+		return -EINVAL;
+
+	memset(&matches, 0, sizeof(matches));
+	ret = glob("/dev/video*", GLOB_NOSORT, NULL, &matches);
+	if (ret != 0)
+		return -ENODEV;
+
+	ret = -ENODEV;
+	for (i = 0; i < matches.gl_pathc; i++) {
+		int fd = open(matches.gl_pathv[i], O_RDWR | O_NONBLOCK);
+
+		if (fd < 0)
+			continue;
+		if (is_iris_decoder(fd)) {
+			if (snprintf(path, path_size, "%s", matches.gl_pathv[i]) >=
+			    (int)path_size)
+				ret = -ENAMETOOLONG;
+			else
+				ret = 0;
+			close(fd);
+			break;
+		}
+		close(fd);
+	}
+
+	globfree(&matches);
+	return ret;
+}
+
+static int resolve_decoder_device(const char *dev, char *path,
+				  size_t path_size)
+{
+	if (!dev)
+		return find_iris_decoder(path, path_size);
+	if (snprintf(path, path_size, "%s", dev) >= (int)path_size)
+		return -ENAMETOOLONG;
+	return 0;
+}
+
 int v4l2_dec_supports_capture_format(const char *dev,
 				      unsigned int pixelformat)
 {
 	struct v4l2_fmtdesc fmt;
+	char device_path[PATH_MAX];
 	int fd;
 
-	fd = open(dev ? dev : "/dev/video0", O_RDWR | O_NONBLOCK);
+	if (resolve_decoder_device(dev, device_path, sizeof(device_path)) < 0)
+		return 0;
+	fd = open(device_path, O_RDWR | O_NONBLOCK);
 	if (fd < 0)
 		return 0;
 
@@ -304,16 +371,25 @@ int v4l2_dec_open(struct v4l2_dec *d, const char *dev,
 	struct v4l2_format cap_fmt;
 	struct v4l2_requestbuffers req;
 	struct v4l2_event_subscription sub;
+	char device_path[PATH_MAX];
+	unsigned int caps;
 	unsigned int i;
 	int ret;
 
 	memset(d, 0, sizeof(*d));
 	d->cap_memory = V4L2_MEMORY_MMAP;
 	d->fd = -1;
-	d->fd = open(dev ? dev : "/dev/video0", O_RDWR | O_NONBLOCK);
+	ret = resolve_decoder_device(dev, device_path, sizeof(device_path));
+	if (ret < 0) {
+		fprintf(stderr, "v4l2-dec: Iris decoder device not found\n");
+		return ret;
+	}
+	d->fd = open(device_path, O_RDWR | O_NONBLOCK);
 	if (d->fd < 0) {
-		perror("open /dev/video0");
-		return -errno;
+		ret = -errno;
+		fprintf(stderr, "v4l2-dec: cannot open %s: %s\n",
+			device_path, strerror(-ret));
+		return ret;
 	}
 
 	if (xioctl(d->fd, VIDIOC_QUERYCAP, &cap) < 0) {
@@ -321,13 +397,15 @@ int v4l2_dec_open(struct v4l2_dec *d, const char *dev,
 		ret = -errno;
 		goto error;
 	}
-	if (!(cap.capabilities & V4L2_CAP_VIDEO_M2M_MPLANE)) {
+	caps = cap.capabilities & V4L2_CAP_DEVICE_CAPS ?
+		cap.device_caps : cap.capabilities;
+	if (!(caps & V4L2_CAP_VIDEO_M2M_MPLANE)) {
 		fprintf(stderr, "not an M2M mplane device: %s\n",
 			(char *)cap.driver);
 		ret = -EINVAL;
 		goto error;
 	}
-	printf("v4l2-dec: device %s driver '%s' card '%s'\n", dev ? dev : "/dev/video0",
+	printf("v4l2-dec: device %s driver '%s' card '%s'\n", device_path,
 	       (char *)cap.driver, (char *)cap.card);
 
 	memset(&sub, 0, sizeof(sub));

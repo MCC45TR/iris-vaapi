@@ -1217,7 +1217,7 @@ ensure_decoder(struct iris_decode_ctx *ctx)
 			return 0;
 		}
 	}
-	ret = v4l2_dec_open(&ctx->dec, "/dev/video0", ctx->width,
+	ret = v4l2_dec_open(&ctx->dec, NULL, ctx->width,
 			    ctx->height, ctx->out_pixfmt, ctx->cap_pixfmt);
 	if (ret)
 		return ret;

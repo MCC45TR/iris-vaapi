@@ -1443,7 +1443,7 @@ __vaDriverInit_1_23(VADriverContextP ctx, int major_version, int minor_version)
 		if (!dd)
 			return VA_STATUS_ERROR_ALLOCATION_FAILED;
 		dd->p010_supported = v4l2_dec_supports_capture_format(
-			"/dev/video0", V4L2_PIX_FMT_P010);
+			NULL, V4L2_PIX_FMT_P010);
 		if (!dd->p010_supported)
 			fprintf(stderr,
 				"iris-vaapi: kernel does not advertise P010; hiding HEVC Main10 and VP9 Profile 2\n");

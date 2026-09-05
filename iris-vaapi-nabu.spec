@@ -1,6 +1,6 @@
 Name:           iris-vaapi-nabu
 Version:        0.1.0
-Release:        4.alpha%{?dist}
+Release:        5.alpha%{?dist}
 Summary:        Experimental VA-API driver for Qualcomm SM8150 Iris1
 License:        GPL-2.0-or-later
 URL:            https://github.com/CFM880/iris-vaapi
@@ -44,6 +44,7 @@ grep -Fxq 'options qcom_iris allow_fw_boot=1 cached_capture=1' \
     %{buildroot}%{_prefix}/lib/modprobe.d/99-iris-vaapi.conf
 grep -Fxq 'LIBVA_DRIVER_NAME=iris' \
     %{buildroot}%{_prefix}/lib/environment.d/90-iris-vaapi-nabu.conf
+! grep -E '"/dev/video0"' src/decode.c src/iris_vaapi.c src/v4l2_dec.c
 
 %files
 %license COPYING
@@ -54,6 +55,10 @@ grep -Fxq 'LIBVA_DRIVER_NAME=iris' \
 %{_prefix}/lib/environment.d/90-iris-vaapi-nabu.conf
 
 %changelog
+* Sat Sep 05 2026 mcc45tr <mcc45tr@gmail.com> - 0.1.0-5.alpha
+- Discover the Iris decoder dynamically when camera nodes occupy /dev/video0.
+- Validate the selected node by driver, card name, and M2M capabilities.
+
 * Sat Sep 05 2026 mcc45tr <mcc45tr@gmail.com> - 0.1.0-4.alpha
 - Enable the documented Iris firmware boot gate for working V4L2 sessions.
 - Select the Nabu Iris VA-API driver automatically in graphical sessions.
