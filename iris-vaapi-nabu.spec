@@ -1,6 +1,6 @@
 Name:           iris-vaapi-nabu
 Version:        0.1.0
-Release:        3.alpha%{?dist}
+Release:        4.alpha%{?dist}
 Summary:        Experimental VA-API driver for Qualcomm SM8150 Iris1
 License:        GPL-2.0-or-later
 URL:            https://github.com/CFM880/iris-vaapi
@@ -34,10 +34,16 @@ install -Dm0644 tools/99-iris-dmaheap.rules \
     %{buildroot}%{_prefix}/lib/udev/rules.d/99-iris-dmaheap.rules
 install -Dm0644 tools/99-iris-vaapi.conf \
     %{buildroot}%{_prefix}/lib/modprobe.d/99-iris-vaapi.conf
+install -Dm0644 tools/90-iris-vaapi-nabu.conf \
+    %{buildroot}%{_prefix}/lib/environment.d/90-iris-vaapi-nabu.conf
 
 %check
 make check
 test -s %{buildroot}%{_libdir}/dri/iris_drv_video.so
+grep -Fxq 'options qcom_iris allow_fw_boot=1 cached_capture=1' \
+    %{buildroot}%{_prefix}/lib/modprobe.d/99-iris-vaapi.conf
+grep -Fxq 'LIBVA_DRIVER_NAME=iris' \
+    %{buildroot}%{_prefix}/lib/environment.d/90-iris-vaapi-nabu.conf
 
 %files
 %license COPYING
@@ -45,8 +51,13 @@ test -s %{buildroot}%{_libdir}/dri/iris_drv_video.so
 %{_libdir}/dri/iris_drv_video.so
 %{_prefix}/lib/udev/rules.d/99-iris-dmaheap.rules
 %{_prefix}/lib/modprobe.d/99-iris-vaapi.conf
+%{_prefix}/lib/environment.d/90-iris-vaapi-nabu.conf
 
 %changelog
+* Sat Sep 05 2026 mcc45tr <mcc45tr@gmail.com> - 0.1.0-4.alpha
+- Enable the documented Iris firmware boot gate for working V4L2 sessions.
+- Select the Nabu Iris VA-API driver automatically in graphical sessions.
+
 * Tue Sep 01 2026 mcc45tr <mcc45tr@gmail.com> - 0.1.0-3.alpha
 - Use stable /usr/lib paths across supported Fedora releases.
 
